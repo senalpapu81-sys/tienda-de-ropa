@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tienda de Ropa</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #1a1a2e;
+      --bg-darker: #16213e;
+      --accent: #0f3460;
+      --text: #e94560;
+      --light: #f1f1f1;
+      --success: #4caf50;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: var(--bg-dark);
+      color: var(--light);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      background-color: var(--bg-darker);
+      padding: 15px 0;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--text);
+    }
+    
+    .btn {
+      background-color: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+    
+    .btn:hover {
+      background-color: var(--text);
+      transform: translateY(-2px);
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .modal-content {
+      background-color: var(--bg-darker);
+      padding: 30px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .modal-title {
+      font-size: 20px;
+      color: var(--text);
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--light);
+      cursor: pointer;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #444;
+      background-color: #333;
+      color: var(--light);
+    }
+    
+    .prendas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+    
+    .prenda-card {
+      background-color: var(--bg-darker);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s;
+    }
+    
+    .prenda-card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .prenda-img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    }
+    
+    .prenda-info {
+      padding: 15px;
+    }
+    
+    .prenda-title {
+      font-size: 18px;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    
+    .prenda-desc {
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: #ccc;
+    }
+    
+    .prenda-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+    
+    .prenda-price {
+      font-weight: bold;
+      color: var(--success);
+    }
+    
+    .prenda-modal {
+      max-width: 800px;
+    }
+    
+    .prenda-modal-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    @media (min-width: 768px) {
+      .prenda-modal-content {
+        flex-direction: row;
+      }
+    }
+    
+    .prenda-modal-img {
+      flex: 1;
+      max-height: 400px;
+      object-fit: contain;
+    }
+    
+    .prenda-modal-info {
+      flex: 1;
+    }
+    
+    .codes-container {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 20px;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    
+    .code-wrapper {
+      text-align: center;
+    }
+    
+    .code-title {
+      margin-bottom: 10px;
+      font-size: 16px;
+      color: var(--text);
+    }
+    
+    .code-img {
+      max-width: 200px;
+      height: auto;
+    }
+    
+    .username-modal {
+      text-align: center;
+    }
+    
+    .username-input {
+      margin: 20px 0;
+      font-size: 18px;
+      text-align: center;
+    }
+    
+    .tallas-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    .talla-btn {
+      padding: 5px 10px;
+      background-color: #333;
+      border: 1px solid #555;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+    .talla-btn.selected {
+      background-color: var(--accent);
+      border-color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container header-content">
+      <div class="logo">Tienda de Ropa</div>
+      <button id="btnAgregar" class="btn">Agregar Prenda</button>
+    </div>
+  </header>
+  
+  <main class="container">
+    <div id="prendasContainer" class="prendas-grid"></div>
+  </main>
+  
+  <!-- Modal Agregar Prenda -->
+  <div id="agregarModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Agregar Nueva Prenda</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <form id="formAgregarPrenda">
+        <div class="form-group">
+          <label for="nombre">Nombre de la prenda</label>
+          <input type="text" id="nombre" required>
+        </div>
+        <div class="form-group">
+          <label for="descripcion">Descripción</label>
+          <textarea id="descripcion" rows="3" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Talla</label>
+          <div class="tallas-container">
+            <button type="button" class="talla-btn" data-talla="XS">XS</button>
+            <button type="button" class="talla-btn" data-talla="S">S</button>
+            <button type="button" class="talla-btn" data-talla="M">M</button>
+            <button type="button" class="talla-btn" data-talla="L">L</button>
+            <button type="button" class="talla-btn" data-talla="XL">XL</button>
+            <button type="button" class="talla-btn" data-talla="XXL">XXL</button>
+          </div>
+          <input type="hidden" id="talla" required>
+        </div>
+        <div class="form-group">
+          <label for="precio">Precio (USD)</label>
+          <input type="number" id="precio" min="0" step="0.01" required>
+        </div>
+        <div class="form-group">
+          <label for="imagen">URL de la imagen</label>
+          <input type="url" id="imagen" required>
+        </div>
+        <button type="submit" class="btn">Agregar Prenda</button>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Modal Ver Prenda -->
+  <div id="verPrendaModal" class="modal">
+    <div class="modal-content prenda-modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="verPrendaTitulo"></h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="prenda-modal-content">
+        <img id="verPrendaImagen" class="prenda-modal-img" src="" alt="">
+        <div class="prenda-modal-info">
+          <p id="verPrendaDescripcion"></p>
+          <p><strong>Talla:</strong> <span id="verPrendaTalla"></span></p>
+          <p><strong>Precio:</strong> $<span id="verPrendaPrecio"></span> USD</p>
+          <p><strong>Vendedor:</strong> <span id="verPrendaVendedor"></span></p>
+          
+          <div class="codes-container">
+            <div class="code-wrapper">
+              <div class="code-title">Código QR</div>
+              <img id="qrCode" class="code-img" src="" alt="QR Code">
+            </div>
+            <div class="code-wrapper">
+              <div class="code-title">Código de Barras</div>
+              <img id="barcode" class="code-img" src="" alt="Barcode">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal Usuario -->
+  <div id="usuarioModal" class="modal">
+    <div class="modal-content username-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Ingresa tu nombre de usuario</h2>
+      </div>
+      <form id="formUsuario">
+        <input type="text" id="username" class="username-input" placeholder="Tu nombre de usuario" required>
+        <button type="submit" class="btn">Continuar</button>
+      </form>
+    </div>
+  </div>
+  
+  <script>
+    // Variables globales
+    let socket;
+    let currentUser = null;
+    
+    // DOM Elements
+    const agregarModal = document.getElementById('agregarModal');
+    const verPrendaModal = document.getElementById('verPrendaModal');
+    const usuarioModal = document.getElementById('usuarioModal');
+    const btnAgregar = document.getElementById('btnAgregar');
+    const prendasContainer = document.getElementById('prendasContainer');
+    const formAgregarPrenda = document.getElementById('formAgregarPrenda');
+    const formUsuario = document.getElementById('formUsuario');
+    const tallaBtns = document.querySelectorAll('.talla-btn');
+    const tallaInput = document.getElementById('talla');
+    
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      // Mostrar modal de usuario primero
+      usuarioModal.style.display = 'flex';
+      
+      // Conectar a Socket.io después de tener usuario
+      formUsuario.addEventListener('submit', handleUsuarioSubmit);
+      
+      // Configurar botón agregar
+      btnAgregar.addEventListener('click', () => {
+        if (!currentUser) {
+          alert('Primero ingresa tu nombre de usuario');
+          usuarioModal.style.display = 'flex';
+          return;
+        }
+        agregarModal.style.display = 'flex';
+      });
+      
+      // Cerrar modales
+      document.querySelectorAll('.close-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          agregarModal.style.display = 'none';
+          verPrendaModal.style.display = 'none';
+        });
+      });
+      
+      // Seleccionar tallas
+      tallaBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tallaBtns.forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          tallaInput.value = btn.dataset.talla;
+        });
+      });
+      
+      // Formulario agregar prenda
+      formAgregarPrenda.addEventListener('submit', handleAgregarPrenda);
+      
+      // Cargar prendas iniciales
+      cargarPrendas();
+    });
+    
+    // Funciones
+    function handleUsuarioSubmit(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      
+      if (!username) return;
+      
+      fetch('/api/usuarios', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username })
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Error al registrar usuario');
+        return response.json();
+      })
+      .then(data => {
+        currentUser = data.username;
+        usuarioModal.style.display = 'none';
+        
+        // Conectar a Socket.io
+        socket = io();
+        
+        // Escuchar nuevas prendas
+        socket.on('nueva_prenda', (prenda) => {
+          agregarPrendaAlDOM(prenda);
+        });
+      })
+      .catch(err => {
+        console.error('Error:', err);
+        alert('Error al registrar usuario. Intenta con otro nombre.');
+      });
+    }
+    
+    function handleAgregarPrenda(e) {
+      e.preventDefault();
+      
+      const nombre = document.getElementById('nombre').value;
+      const descripcion = document.getElementById('descripcion').value;
+      const talla = tallaInput.value;
+      const precio = parseFloat(document.getElementById('precio').value);
+      const imagen = document.getElementById('imagen').value;
+      
+      if (!nombre || !descripcion || !talla || isNaN(precio) || !imagen) {
+        alert('Por favor completa todos los campos');
+        return;
+      }
+      
+      const prenda = {
+        nombre,
+        descripcion,
+        talla,
+        precio,
+        imagen,
+        usuario: currentUser
+      };
+      
+      fetch('/api/prendas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(prenda)
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Error al agregar prenda');
+        return response.json();
+      })
+      .then(data => {
+        agregarModal.style.display = 'none';
+        formAgregarPrenda.reset();
+        tallaBtns.forEach(btn => btn.classList.remove('selected'));
+        tallaInput.value = '';
+      })
+      .catch(err => {
+        console.error('Error:', err);
+        alert('Error al agregar prenda');
+      });
+    }
+    
+    function cargarPrendas() {
+      fetch('/api/prendas')
+        .then(response => response.json())
+        .then(prendas => {
+          prendasContainer.innerHTML = '';
+          prendas.forEach(prenda => {
+            agregarPrendaAlDOM(prenda);
+          });
+        })
+        .catch(err => console.error('Error al cargar prendas:', err));
+    }
+    
+    function agregarPrendaAlDOM(prenda) {
+      const prendaCard = document.createElement('div');
+      prendaCard.className = 'prenda-card';
+      prendaCard.innerHTML = `
+        <img src="${prenda.imagen}" alt="${prenda.nombre}" class="prenda-img">
+        <div class="prenda-info">
+          <h3 class="prenda-title">${prenda.nombre}</h3>
+          <p class="prenda-desc">${prenda.descripcion}</p>
+          <div class="prenda-meta">
+            <span>Talla: ${prenda.talla}</span>
+            <span class="prenda-price">$${prenda.precio.toFixed(2)} USD</span>
+          </div>
+        </div>
+      `;
+      
+      prendaCard.addEventListener('click', () => mostrarDetallePrenda(prenda));
+      prendasContainer.prepend(prendaCard);
+    }
+    
+    function mostrarDetallePrenda(prenda) {
+      document.getElementById('verPrendaTitulo').textContent = prenda.nombre;
+      document.getElementById('verPrendaDescripcion').textContent = prenda.descripcion;
+      document.getElementById('verPrendaTalla').textContent = prenda.talla;
+      document.getElementById('verPrendaPrecio').textContent = prenda.precio.toFixed(2);
+      document.getElementById('verPrendaVendedor').textContent = prenda.usuario;
+      document.getElementById('verPrendaImagen').src = prenda.imagen;
+      
+      // Generar QR y código de barras
+      const infoPrenda = `Nombre: ${prenda.nombre}, Precio: $${prenda.precio.toFixed(2)}, Talla: ${prenda.talla}`;
+      document.getElementById('qrCode').src = `/api/qr/${encodeURIComponent(infoPrenda)}`;
+      document.getElementById('barcode').src = `/api/barcode/${encodeURIComponent(prenda._id)}`;
+      
+      verPrendaModal.style.display = 'flex';
+    }
+  </script>
+</body>
+</html>
